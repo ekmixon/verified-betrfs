@@ -83,7 +83,7 @@ class TimeSeries:
         ax.set_ylabel("Kops/sec")
         ax.set_xlabel("op num (K)")
 
-        xs = [t for t in self.exp.ops_completed]
+        xs = list(self.exp.ops_completed)
         def aggregateAt(time, label):
             if time > xs[-1]:
                 return
@@ -92,12 +92,13 @@ class TimeSeries:
             if label == "end":
                 msg += "\ncur %.2f" % cur
             ax.text(self.timeToKiloOp(time), aggregate, msg, horizontalalignment="right")
+
         aggregateAt(xs[-1], "end")
         t1m = self.opToTime(2000000)
         aggregateAt(t1m, "op1000k")
-        
+
         axtwin = ax.twinx()
-        ts = [t for t in self.exp.ops_completed]
+        ts = list(self.exp.ops_completed)
         ops = [self.exp.ops_completed[t]/Kilo for t in xs]
         axtwin.plot(ops,ts, "g")
         axtwin.set_ylabel("time (s)")

@@ -8,41 +8,37 @@ from lib_deps import *
 
 def is_include(line):
   l = line.split()
-  if len(l) > 0 and (l[0] == 'include' or l[0] == '//include'):
+  if len(l) > 0 and l[0] in ['include', '//include']:
     return True
-  if len(l) > 1 and l[0] == '//' and l[1] == 'include':
-    return True
-  return False
+  return len(l) > 1 and l[0] == '//' and l[1] == 'include'
 
 def readVeriDoc(path):
-    lines = open(path).readlines()
-    offset = 0
-    veridoc = []
-    while is_include(lines[offset]):
-        offset += 1
-    while True:
-      line = lines[offset].strip()
+  lines = open(path).readlines()
+  offset = 0
+  veridoc = []
+  while is_include(lines[offset]):
       offset += 1
+  while True:
+    line = lines[offset].strip()
+    offset += 1
 
-      if line.startswith("//"):
-        veridoc.append(line[2:].strip())
-      elif line == "":
-        pass
-      else:
-        break
-    
-    while len(veridoc) > 0 and veridoc[0] == "":
-      veridoc = veridoc[1:]
+    if line.startswith("//"):
+      veridoc.append(line[2:].strip())
+    elif line != "":
+      break
 
-    return "\n".join(veridoc)
+  while veridoc and veridoc[0] == "":
+    veridoc = veridoc[1:]
+
+  return "\n".join(veridoc)
 
 def toposortFiles(candidates):
     return toposortGroup([IncludeReference(None, 0, line) for line in candidates])
 
 def separate(irefs, l):
-    match = set([i for i in irefs if l(i.normPath)])
-    remainder = irefs - match
-    return (match, remainder)
+  match = {i for i in irefs if l(i.normPath)}
+  remainder = irefs - match
+  return (match, remainder)
 
 class FileBucket(object):
   def __init__(self, start, end, title, comment=None):
@@ -83,33 +79,33 @@ dirs = [
 
 class Documentater:
     def __init__(self):
-        TOP=IncludeReference(None, 0, "Impl/Bundle.i.dfy")
-        deps = depsFromDfySource(TOP)
+      TOP=IncludeReference(None, 0, "Impl/Bundle.i.dfy")
+      deps = depsFromDfySource(TOP)
 
-        buckets = [(fb, []) for fb in dirs]
+      buckets = [(fb, []) for fb in dirs]
 
-        for dep in deps:
-          for (b, filelist) in buckets:
-            if b.contains(dep.normPath):
-              filelist.append(dep)
-              break
-          else:
-            raise Exception("no FileBucket for " + dep.normPath)
+      for dep in deps:
+        for (b, filelist) in buckets:
+          if b.contains(dep.normPath):
+            filelist.append(dep)
+            break
+        else:
+          raise Exception(f"no FileBucket for {dep.normPath}")
 
-        with open("docs/veridoc.md", "w") as f:
-          self.veridoc_fp = f
-          for (b, filelist) in buckets:
-            self.present(filelist, b.title, b.comment)
+      with open("docs/veridoc.md", "w") as f:
+        self.veridoc_fp = f
+        for (b, filelist) in buckets:
+          self.present(filelist, b.title, b.comment)
     
     def present(self, irefs, headerText, commentText):
-        files = [i.normPath for i in irefs]
-        self.veridoc_fp.write("# %s\n\n" % headerText)
-        if commentText:
-          self.veridoc_fp.write("%s\n\n" % commentText)
-        for iref in toposortFiles(files):
-            self.veridoc_fp.write("**%s** " % iref.normPath)
-            self.veridoc_fp.write(readVeriDoc(iref.normPath))
-            self.veridoc_fp.write("\n")
-            self.veridoc_fp.write("\n")
+      files = [i.normPath for i in irefs]
+      self.veridoc_fp.write("# %s\n\n" % headerText)
+      if commentText:
+        self.veridoc_fp.write("%s\n\n" % commentText)
+      for iref in toposortFiles(files):
+        self.veridoc_fp.write(f"**{iref.normPath}** ")
+        self.veridoc_fp.write(readVeriDoc(iref.normPath))
+        self.veridoc_fp.write("\n")
+        self.veridoc_fp.write("\n")
 
 Documentater()

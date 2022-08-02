@@ -127,8 +127,18 @@ def walk(contents, machine_step_params):
                     # inner.append(inner_state_machine_indent)
                     indent_str = inner_state_machine_indent[1][1].replace('\n', '')
 
-                    datatype_decl = "\n" + indent_str + "datatype Step =\n" + \
-                        "\n".join([ "{}  | {}Step({})".format(indent_str, ident, params) for ident, params in inner_collected_steps ]) + "\n\n"
+                    datatype_decl = (
+                        "\n"
+                        + indent_str
+                        + "datatype Step =\n"
+                        + "\n".join(
+                            [
+                                f"{indent_str}  | {ident}Step({params})"
+                                for ident, params in inner_collected_steps
+                            ]
+                        )
+                    ) + "\n\n"
+
 
                     param_names = []
                     for ident, params in inner_collected_steps:
@@ -146,17 +156,71 @@ def walk(contents, machine_step_params):
                     flat_step_params_parsed.extend(x[0] for x in (step_params_parsed[2] if len(step_params_parsed) > 2 else []))
                     machine_step_args = ", ".join([x[0][1][1] for x in flat_step_params_parsed])
 
-                    nextstep = indent_str + "predicate NextStep(k: Constants, s: Variables, s': Variables{}{}, step: Step)\n".format(', ' if inner_step_params.strip() != '' else '', inner_step_params) + \
-                            indent_str + "{\n" + \
-                            indent_str + "  match step {\n" + \
-                            "\n".join(["{}    case {}Step({}) => {}(k, s, s'{}{}{}{})".format(indent_str, ident, pnames, ident, ', ' if machine_step_args.strip() != '' else '', machine_step_args, ', ' if pnames.strip() != "" else '', pnames) for ((ident, params), pnames) in nextstep_names]) + "\n" + \
-                            indent_str + "  }\n" + \
-                            indent_str + "}\n"
+                    nextstep = (
+                        (
+                            (
+                                (
+                                    (
+                                        (
+                                            (
+                                                (
+                                                    indent_str
+                                                    + f"predicate NextStep(k: Constants, s: Variables, s': Variables{', ' if inner_step_params.strip() != '' else ''}{inner_step_params}, step: Step)\n"
+                                                    + indent_str
+                                                )
+                                                + "{\n"
+                                            )
+                                            + indent_str
+                                        )
+                                        + "  match step {\n"
+                                    )
+                                    + "\n".join(
+                                        [
+                                            f"""{indent_str}    case {ident}Step({pnames}) => {ident}(k, s, s'{', ' if machine_step_args.strip() != '' else ''}{machine_step_args}{', ' if pnames.strip() != "" else ''}{pnames})"""
+                                            for (
+                                                (ident, params),
+                                                pnames,
+                                            ) in nextstep_names
+                                        ]
+                                    )
+                                    + "\n"
+                                )
+                                + indent_str
+                            )
+                            + "  }\n"
+                        )
+                        + indent_str
+                    ) + "}\n"
 
-                    predicate_next = indent_str + "predicate Next(k: Constants, s: Variables, s': Variables{}{})".format(', ' if inner_step_params.strip() != '' else '', inner_step_params) + "\n" + \
-                            indent_str + "{" + "\n" + \
-                            indent_str + "  exists step :: NextStep(k, s, s'{}{}, step)".format(', ' if machine_step_args.strip() != '' else '', machine_step_args) + "\n" + \
-                            indent_str + "}" + "\n"
+
+                    predicate_next = (
+                        (
+                            (
+                                (
+                                    (
+                                        (
+                                            (
+                                                (
+                                                    indent_str
+                                                    + f"predicate Next(k: Constants, s: Variables, s': Variables{', ' if inner_step_params.strip() != '' else ''}{inner_step_params})"
+                                                    + "\n"
+                                                    + indent_str
+                                                )
+                                                + "{"
+                                            )
+                                            + "\n"
+                                        )
+                                        + indent_str
+                                    )
+                                    + f"  exists step :: NextStep(k, s, s'{', ' if machine_step_args.strip() != '' else ''}{machine_step_args}, step)"
+                                )
+                                + "\n"
+                            )
+                            + indent_str
+                        )
+                        + "}"
+                    ) + "\n"
+
 
                     inner.append(('tladfy', (None, [
                         ('tladfy', (None, datatype_decl, None)),
@@ -166,9 +230,6 @@ def walk(contents, machine_step_params):
                     ], None)))
 
                     machine_step_params = ''
-            else:
-                pass
-
     return (has_state_machine, state_machine_indent, collected_steps, machine_step_params)
 
 walk(parse_tree, '')

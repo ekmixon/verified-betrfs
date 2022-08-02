@@ -34,12 +34,15 @@ for system in systems:
     y = system.impl/1000.
     xs.append(x)
     ys.append(y)
-    plt.text(x, y,
-            " " + system.name + " ",
-            verticalalignment="center",
-            fontweight="bold" if system.name=="veribetrfs" else "roman",
-            horizontalalignment="right" if system.name=="veribetrfs" else "left",
-            )
+    plt.text(
+        x,
+        y,
+        f" {system.name} ",
+        verticalalignment="center",
+        fontweight="bold" if system.name == "veribetrfs" else "roman",
+        horizontalalignment="right" if system.name == "veribetrfs" else "left",
+    )
+
 plt.plot(xs, ys, "*")
 plt.xlabel("⟵better        proof kLoC")
 plt.ylabel("impl kLoC        better ⟶")

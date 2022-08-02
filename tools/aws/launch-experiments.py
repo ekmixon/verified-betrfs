@@ -42,21 +42,38 @@ RUN_VERI_PATH="tools/run-veri-config-experiment.py"
 
 def cmd_for_idx(idx, worker):
     variant = suite.variants[idx]
-    cmd = (ssh_cmd_for_worker(worker) + [
-        "cd",  "veribetrfs", ";",
-        "git", "fetch", ";",
-        "git", "checkout", variant.infrastructure_branch(), ";",
-        "git", "pull", ";",
-        #"sh",  "tools/clean-for-build.sh", variant.git_branch(), ";",
+    cmd = (
+        ssh_cmd_for_worker(worker)
+        + [
+            "cd",
+            "veribetrfs",
+            ";",
+            "git",
+            "fetch",
+            ";",
+            "git",
+            "checkout",
+            variant.infrastructure_branch(),
+            ";",
+            "git",
+            "pull",
+            ";",
+            # "sh",  "tools/clean-for-build.sh", variant.git_branch(), ";",
         ]
-        + [RUN_VERI_PATH] + variant.run_veri_params() + ["output=../"+variant.outfile()]
-        )
+        + [RUN_VERI_PATH]
+        + variant.run_veri_params()
+        + [f"output=../{variant.outfile()}"]
+    )
+
     return Command(str(variant), cmd)
 
 def main():
     set_logfile(suite.logpath())
-    log("PLOT tools/aws/pull-results.py && %s && eog %s" % (suite.plot_command(), suite.png_filename()))
-    log("VARIANTS %s" % suite.variants)
+    log(
+        f"PLOT tools/aws/pull-results.py && {suite.plot_command()} && eog {suite.png_filename()}"
+    )
+
+    log(f"VARIANTS {suite.variants}")
 
     workers = retrieve_running_workers(workers_file=args.workers_file, ssd=args.ssd)
     worker_pipes = launch_worker_pipes(workers, len(suite.variants), cmd_for_idx, dry_run=args.dry_run)

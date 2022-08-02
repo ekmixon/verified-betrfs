@@ -46,7 +46,7 @@ class Exp:
 
 def parse(datafile):
     exp = Exp()
-    for line in open(datafile).readlines():
+    for line in open(datafile):
         fields = line.split()
         if line.startswith("METADATA"):
             exp.metadata[fields[1]] = " ".join(fields[2:])

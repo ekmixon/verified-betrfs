@@ -20,8 +20,7 @@ def loadReport(iref):
 def gatherReports(input):
     TOP=lib_deps.IncludeReference(None, 0, input)
     targets = [TOP] + lib_deps.depsFromDfySource(TOP)
-    reports = [loadReport(target) for target in targets]
-    return reports
+    return [loadReport(target) for target in targets]
 
 # I should probably just dump stuff into an in-memory sqlite, huh?
 def accumulate(reports, mapper):
@@ -62,8 +61,7 @@ def write_tex_table(fp, counters):
                 rowdata["proof"]
                 ))
 
-    keys = list(counters.keys())
-    keys.sort()
+    keys = sorted(counters.keys())
     for key,label in row_labels.items():
         label = row_labels[key]
         write_row(label, counters[key])
@@ -78,8 +76,8 @@ def write_table(fp, counters):
                 rowdata["spec"],
                 rowdata["impl"],
                 rowdata["proof"]))
-    keys = list(counters.keys())
-    keys.sort()
+
+    keys = sorted(counters.keys())
     write_row("", {"spec":"spec", "impl":"impl", "proof":"proof"})
     for key in keys:
         write_row(key, counters[key])
@@ -89,7 +87,7 @@ class Mapper:
         self.categ = self.__class__.__name__
 
     def key(self, report):
-        return "%s-%s" % (self.categ, self.map(report))
+        return f"{self.categ}-{self.map(report)}"
 
 class AllMapper(Mapper):
     def __init__(self):
@@ -105,22 +103,21 @@ class DirMapper(Mapper):
     def map(self, report):
         source = report["source"]
         dirpart = os.path.dirname(source)
-        if dirpart == "Impl":
-            base = source.split(".")[0]
-            if base.endswith("Model"):
-                return "Impl-Model"
-            elif base.endswith("Impl"):
-                return "Impl-Impl"
-            else:
-                return "Impl-Misc"
-        else:
+        if dirpart != "Impl":
             return dirpart
+        base = source.split(".")[0]
+        if base.endswith("Model"):
+            return "Impl-Model"
+        elif base.endswith("Impl"):
+            return "Impl-Impl"
+        else:
+            return "Impl-Misc"
 
 class ManualMapper(Mapper):
     def __init__(self):
         super().__init__()
         self.mapping = {}
-        for line in open("docs/file-classifications.txt").readlines():
+        for line in open("docs/file-classifications.txt"):
             categ,path = line.split()
             if path.startswith("./"):
                 path = path[2:]
@@ -138,10 +135,9 @@ def report(input, output):
     counters = accumulate(reports, AllMapper())
     counters.update(accumulate(reports, DirMapper()))
     counters.update(accumulate(reports, ManualMapper()))
-    fp = open(output, "w")
+    with open(output, "w") as fp:
 #    json.dumps(counters, fp, sort_keys=True, indent=2)
 #    fp.write("\n")
-    write_tex_table(fp, counters)
-    write_table(fp, counters)
-    fp.close()
+        write_tex_table(fp, counters)
+        write_table(fp, counters)
 

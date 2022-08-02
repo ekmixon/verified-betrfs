@@ -23,21 +23,20 @@ class Capture:
 
     def load(self):
         self.table = {}
-        for line in open("/tmp/trace-1", "r").readlines():
+        for line in open("/tmp/trace-1", "r"):
             mo = re.search("(trace|expanded): count ([-0-9]*).*hash *(.*)", line)
-            if mo!=None:
+            if mo is None:
+                pc = int(line.strip(), 16)
+                trace.frames.append(pc)
+
+            else:
                 mode,count,hash = mo.groups()
                 if mode=="trace": continue
                 trace = Trace(int(count), int(hash, 16))
                 self.table[hash] = trace
-            else:
-                pc = int(line.strip(), 16)
-                trace.frames.append(pc)
 
     def study(self):
-        byChar = []
-        for trace in self.table.values():
-            byChar.append((trace.character(), trace))
+        byChar = [(trace.character(), trace) for trace in self.table.values()]
         byChar.sort()
         lastChar = None
         total = 0

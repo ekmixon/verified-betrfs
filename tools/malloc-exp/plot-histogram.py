@@ -23,8 +23,7 @@ def parse_one_histogram(line):
     return histo
 
 def cdf(histo, by_size):
-    sizes = list(histo.keys())
-    sizes.sort()
+    sizes = sorted(histo.keys())
     xs = []
     ys = []
     accum = 0
@@ -44,13 +43,13 @@ def parse():
     proc_heap = {}
     malloc_total = {}
     histos = {}
-    for line in open("malloc-exp/histograms", "r").readlines():
+    for line in open("malloc-exp/histograms", "r"):
         if line.startswith("proc-heap"):
             fields = line.split()
             proc_heap[t] = int(fields[1])
             malloc_total[t] = int(fields[3])
             t += 1
-        
+
         if line.startswith("{"):
             histos[t] = parse_one_histogram(line)
 
@@ -66,7 +65,7 @@ def parse():
     line.set_label("by allocation count")
     plt.xscale("log")
     plt.legend()
-    
+
     plt.savefig("malloc-exp/size-cdf.png")
     #plt.show()
     

@@ -8,7 +8,7 @@
 import os
 import subprocess
 
-EXCLUDED_DIRS = set([".dafny", "build"])
+EXCLUDED_DIRS = {".dafny", "build"}
 
 class Renaminator:
     def __init__(self):
@@ -24,11 +24,7 @@ class Renaminator:
         paths = []
         for root, dirs, files in os.walk("."):
             parts = root.split("/")
-            if len(parts) == 1:
-                # must be "."
-                top = parts[0]
-            else:
-                top = parts[1]
+            top = parts[0] if len(parts) == 1 else parts[1]
             if top in EXCLUDED_DIRS or (top[0]=='.' and len(top)>1):
                 continue
             for file in files:
@@ -39,11 +35,14 @@ class Renaminator:
         self.paths = paths
 
     def findSourceDir(self, filename):
-        matchingSourcePaths = [path for path in self.paths if path.endswith("/"+filename)]
-        if len(matchingSourcePaths) == 0:
-            raise Exception("No path matches %s" % filename)
+        matchingSourcePaths = [
+            path for path in self.paths if path.endswith(f"/{filename}")
+        ]
+
+        if not matchingSourcePaths:
+            raise Exception(f"No path matches {filename}")
         if len(matchingSourcePaths) > 1:
-            raise Exception("Multiple paths match %s: %s" % (filename, matchingSourcePaths))
+            raise Exception(f"Multiple paths match {filename}: {matchingSourcePaths}")
         path = matchingSourcePaths[0]
         return path[:-(len(filename)+1)]
 
@@ -58,7 +57,15 @@ class Renaminator:
         expectInclude = 'include "%s"' % sourceRelative
         newInclude = 'include "%s"' % destRelative
         if self.containsLine(referrer, expectInclude):
-            self.fixCmds.append(["sed", "-i", "/include/s#%s#%s#" % (expectInclude, newInclude), referrer])
+            self.fixCmds.append(
+                [
+                    "sed",
+                    "-i",
+                    f"/include/s#{expectInclude}#{newInclude}#",
+                    referrer,
+                ]
+            )
+
             self.gitAddCmds.append(["git", "add", referrer])
 
     def relocate(self, filename, destDir):

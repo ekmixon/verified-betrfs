@@ -30,8 +30,7 @@ class BaseTrace:
 
     def sortedKeys(self):
         if not self._sortedKeys:
-            self._sortedKeys = list(self.data.keys())
-            self._sortedKeys.sort()
+            self._sortedKeys = sorted(self.data.keys())
         return self._sortedKeys
 
     def idxAfter(self, op):
@@ -55,17 +54,16 @@ class Trace(BaseTrace):
     def __getitem__(self, op):
         if op in self.data:
             return self.data[op]
-        else:
-            idx = self.idxAfter(op)
-            if idx==None: return None
-            if idx == 0:
-                return self.data[self.sortedKeys()[0]]
-            left_op = self.sortedKeys()[idx - 1]
-            right_op = self.sortedKeys()[idx]
-            frac = (op - left_op) / float(right_op - left_op)
-            left_v = self.data[left_op]
-            right_v = self.data[right_op]
-            return left_v + frac*(right_v - left_v)
+        idx = self.idxAfter(op)
+        if idx is None: return None
+        if idx == 0:
+            return self.data[self.sortedKeys()[0]]
+        left_op = self.sortedKeys()[idx - 1]
+        right_op = self.sortedKeys()[idx]
+        frac = (op - left_op) / float(right_op - left_op)
+        left_v = self.data[left_op]
+        right_v = self.data[right_op]
+        return left_v + frac*(right_v - left_v)
 
 class DiscreteTrace(BaseTrace):
     """Un-interpolatable values addressed by opn."""
@@ -75,10 +73,8 @@ class DiscreteTrace(BaseTrace):
     def __getitem__(self, op):
         if op in self.data:
             return self.data[op]
-        else:
-            idx = self.idxAfter(op)
-            if idx == None: return None
-            return self.data[self.sortedKeys()[idx]]
+        idx = self.idxAfter(op)
+        return None if idx is None else self.data[self.sortedKeys()[idx]]
 
 class ARow:
     def __init__(self, total_count, open_count, total_byte, open_byte):
@@ -98,7 +94,7 @@ class ARows:
 
     def getTrace(self, field):
         unit = "B" if field.endswith("_byte") else "cnt"
-        trace = Trace(self.label + "." + field, unit)
+        trace = Trace(f"{self.label}.{field}", unit)
         for op,arow in self.arows.items():
             trace[op] = arow.field[field]
         return trace
@@ -112,7 +108,7 @@ def parse_arow(s):
     return ARow(total_count, open_count, total_byte, open_byte)
 
 def match_arow_line(token, line):
-    if not line.startswith(token + " "):
+    if not line.startswith(f"{token} "):
         return None
     arow = parse_arow(line[len(token)+1:len(token)+1+arow_width])
     label = line[len(token)+1+arow_width+1:]
@@ -126,11 +122,7 @@ class CDF:
 class Experiment:
     def __init__(self, filename, nickname=None):
         self.filename = filename
-        if nickname:
-            self.nickname = nickname
-        else:
-            self.nickname = self.filename.split("/")[-1]
-
+        self.nickname = nickname or self.filename.split("/")[-1]
         self.elapsed = Trace("elapsed", "s")
 
         self.operation = Trace("operation", "op")
@@ -183,14 +175,13 @@ class Experiment:
         self.slow_writes = Trace("slow_writes", "count")
 
         self.writeback_stalls = Trace("writeback_stalls", "count")
-        
+
         self.parse()
-        self.sortedOpns = list(self.operation.data.keys())
-        self.sortedOpns.sort()
+        self.sortedOpns = sorted(self.operation.data.keys())
         self.op_max = max(self.sortedOpns)
 
     def parse(self):
-        print("Parsing %s" % self.filename)
+        print(f"Parsing {self.filename}")
         cur_op = 0
         cur_t = 0
         line_num = 0
@@ -230,10 +221,8 @@ class Experiment:
                 process_elapsed(fields[4], fields[1], fields[3])
 
             # The format in branch osdi2020-artifact-*
-            if line.startswith("[step]"):
-                if fields[3]=="progress":
-                    process_elapsed(fields[2], fields[4], fields[6])
-
+            if line.startswith("[step]") and fields[3] == "progress":
+                process_elapsed(fields[2], fields[4], fields[6])
 #            if line.startswith("veribetrkv [op] sync") or line.startswith("rocksdb [op] sync"):
 #                cur_op = int(fields[4])
 #                self.operation[cur_op] = cur_op
@@ -245,7 +234,6 @@ class Experiment:
                 heap = int(fields[3])
                 if heap > 0 and heap < (300<<30):
                     self.os_map_heap[cur_op] = heap
-
 #            if line.startswith("iostats "):
 #                self.reads_started[cur_op] = int(fields[1])
 #                self.reads_completed[cur_op] = int(fields[3])
@@ -270,7 +258,6 @@ class Experiment:
 
             if line.startswith("cgroups-memory.usage_in_bytes"):
                 self.cgroups_memory_usage_bytes[cur_op] = int(fields[1])
-
 #            mo = match_arow_line("ma-scope", line)
 #            if mo:
 #                arow,label = mo
@@ -300,7 +287,7 @@ class Experiment:
             mo = re.compile("cache: (\d+) (.*)-(bytes|count)").search(line)
             if mo!=None:
                 value,type,unit = mo.groups()
-                accum_key = "%s-%s" % (type,unit)
+                accum_key = f"{type}-{unit}"
                 if accum_key not in self.accum:
                     self.accum[accum_key] = Trace(accum_key, "unk")
                 self.accum[accum_key][cur_op] = int(value)
@@ -314,7 +301,7 @@ class Experiment:
             if line.startswith("cgroups-memory.stat"):
                 statName = fields[1]
                 if statName not in self.cgroups_stat:
-                    self.cgroups_stat[statName] = Trace("cgroups-stat-"+statName, "cnt")
+                    self.cgroups_stat[statName] = Trace(f"cgroups-stat-{statName}", "cnt")
                 self.cgroups_stat[statName][cur_op] = int(fields[2])
 
             if line.startswith("io-latency"):

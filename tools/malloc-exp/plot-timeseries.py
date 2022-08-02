@@ -28,7 +28,7 @@ def parse_arow(s):
     return ARow(total_count, open_count, total_byte, open_byte)
 
 def match_arow_line(token, line):
-    if not line.startswith(token + " "):
+    if not line.startswith(f"{token} "):
         return None
     arow = parse_arow(line[len(token)+1:len(token)+1+arow_width])
     label = line[len(token)+1+arow_width+1:]
@@ -53,7 +53,7 @@ def parse(filename):
             os_map_heap[t] = int(fields[3])
             t += 1
         if line.startswith("veribetrkv [op] sync"):
-            if first_op_completed_t == None:
+            if first_op_completed_t is None:
                 first_op_completed_t = t - 2
             ops_completed[t] = int(fields[4])
 
@@ -71,7 +71,7 @@ def parse(filename):
             if label not in microscopes:
                 microscopes[label] = {}
             microscopes[label][t] = arow
-        
+
         if line.startswith("allocationreport stop underyling_count"):
             kvl_underlying_count[t] = int(fields[3])
             kvl_underlying[t] = int(fields[5])
@@ -86,6 +86,7 @@ def parse(filename):
         xs = [t for t in ops_completed if t>0 if t>=window]
         ys = [(ops_completed[t] - ops_completed[t-window])/float(window)/Kilo for t in xs]
         axes[0].plot(xs, ys)
+
     smoothedThroughput(10)
     smoothedThroughput(100)
     axes[0].set_xlim(left = 0, right=t_end)
@@ -93,12 +94,13 @@ def parse(filename):
     axes[0].set_title("op throughput")
     axes[0].set_ylabel("Kops/sec")
 
-    xs = [t for t in ops_completed]
+    xs = list(ops_completed)
     def aggregateAt(time, label):
         if time > xs[-1]:
             return
         aggregate = (ops_completed[time] - ops_completed[xs[0]])/float(time-xs[0])/Kilo
         axes[0].text(time, aggregate, "mean %.1f" % aggregate, horizontalalignment="right")
+
     aggregateAt(xs[-1], "end")
     aggregateAt(1000, "1000s")
 
@@ -122,7 +124,7 @@ def parse(filename):
     #label_bytearys = "seq-from-array.[T = unsigned char]"
     label_bytearys = "in_amass.[T = unsigned char]"
     focus_bytearys = scopes[label_bytearys]
-    xs_bytearys = [t for t in focus_bytearys]
+    xs_bytearys = list(focus_bytearys)
     ys_bytearys = [focus_bytearys[t].open_byte/GB for t in xs_bytearys]
     line, = axes[2].plot(xs_bytearys, ys_bytearys)
     line.set_label("[byte] bytes");
@@ -138,7 +140,7 @@ def parse(filename):
 
     label_nodes = ".NodeImpl_Compile::Node"
     focus_nodes = scopes[label_nodes]
-    xs_nodes = [t for t in focus_nodes]
+    xs_nodes = list(focus_nodes)
     ys_nodes = [focus_nodes[t].open_count for t in xs_nodes]
     line, = a2twin.plot(xs_nodes, ys_nodes)
     line.set_label("Node count")
@@ -147,7 +149,6 @@ def parse(filename):
     line, = a2twin.plot(xs_nodes, [microscopes["esLarge"][t].open_count for t in xs])
     line.set_label("pagein count")
     a2twin.legend(loc="lower left")
-
 #    xs_ratio = [t for t in xs_bytearys if t in xs_nodes]
 #    ys_ratio = [focus_bytearys[t].open_byte/float(focus_nodes[t].open_count)/MB for t in xs_ratio]
 #    print("fooi", len(ys_ratio))
@@ -161,7 +162,7 @@ def parse(filename):
               (microscopes["sfaLarge"], "amass"),
               (scopes["in_amass.[T = unsigned char]"], "in_amass"),
             ]
-    xs = [t for t in stack[0][0]]
+    xs = list(stack[0][0])
     prev = [0 for t in xs]
     for i in range(len(stack)):
         (item,label) = stack[i]
@@ -173,7 +174,7 @@ def parse(filename):
     line.set_label("malloc total")
     axes[3].legend()
 
-    xs = [t for t in kvl_underlying]
+    xs = list(kvl_underlying)
     ys = [kvl_underlying[t]/GB for t in xs]
     line, = axes[4].plot(xs, ys)
     line.set_label("underlying sum");
@@ -184,7 +185,7 @@ def parse(filename):
     axes[4].set_ylabel("GB")
     axes[4].set_title("malloc amass vs underlying sum")
 
-    xs = [t for t in kvl_underlying_count]
+    xs = list(kvl_underlying_count)
     ys = [kvl_underlying_count[t] for t in xs]
     line, = axes[5].plot(xs, ys)
     line.set_label("reachable underlying allocs")
@@ -195,8 +196,7 @@ def parse(filename):
     axes[5].set_title("amass live allocs vs reachable underlying allocs")
 
     def cdf(axis, data):
-        vals = list(data)
-        vals.sort()
+        vals = sorted(data)
         sums = [0]
         for v in vals:
             sums.append(sums[-1] + v)
@@ -207,7 +207,6 @@ def parse(filename):
         axis.plot(xs, ys)
 #    dataset = microscopes["sfaLarge"]
 #    cdf(axes[4], [dataset[t].open_byte for t in dataset])
-
 #    xs_byteToMalloc = [t for t in xs_bytearys]
 #    ys_byteToMalloc = [ microscopes["total"][t].open_byte / focus_bytearys[t].open_byte for t in xs_byteToMalloc]
 #    line, = axes[4].plot(xs_byteToMalloc, ys_byteToMalloc)
@@ -220,7 +219,7 @@ def parse(filename):
 #    axes[4].legend()
 #    axes[4].set_title("overheads")
 
-    figname = "%s-timeseries.png" % filename
+    figname = f"{filename}-timeseries.png"
     plt.savefig(figname)
     #plt.show()
     

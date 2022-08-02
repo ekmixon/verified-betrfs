@@ -20,7 +20,7 @@ def write_summary(reportType, verchks, summary_filename, error_filename):
     with open(error_filename, 'w') as err:
         for verchk in verchks:
             content, condition = summarize_verbose(reportType, verchk)
-            if not condition.userTimeSec is None:
+            if condition.userTimeSec is not None:
                 total_time += condition.userTimeSec
                 timed_conditions.append(condition)
 
@@ -39,7 +39,7 @@ def write_summary(reportType, verchks, summary_filename, error_filename):
                 fails[condition.level].append(dafnyFromVerchk(verchk))
 
     with open(summary_filename, 'w') as summary:
-        if len(fails) == 0:
+        if not fails:
             summary.write("Overall: Success\n")
         else:
             summary.write("Overall: Fail\n")
@@ -50,7 +50,7 @@ def write_summary(reportType, verchks, summary_filename, error_filename):
                 summary.write("\t%s\n" % fail)
 
         summary.write("\nTotal build time: %d seconds\n" % int(total_time))
-        summary.write("\nSlowest files:\n") 
+        summary.write("\nSlowest files:\n")
         for condition in sorted(timed_conditions, reverse=True, key=lambda c : c.userTimeSec)[:10]:
             summary.write("\t%s\t%s\n" % (condition.userTimeSec, condition.filename))
 
@@ -68,7 +68,7 @@ def create_report(reportType, verchks):
 def main():
     parser = argparse.ArgumentParser(description=\
             'Aggregate syntax/verification results for the supplied file and its dependencies')
-    
+
     type_group = parser.add_mutually_exclusive_group(required=True)
     type_group.add_argument('--verchk', action='store_const', const=VERCHK, default=None,
                             help='Full verification check')
@@ -81,11 +81,11 @@ def main():
 
     args = parser.parse_args()
 
-    reportType = args.verchk if not args.verchk is None else args.synchk
-    
+    reportType = args.verchk if args.verchk is not None else args.synchk
+
     deps = depsFromDfySources([dafnyFromVerchk(args.root)])
     verchks = [verchkFromDafny(dep.normPath, reportType) for dep in deps]
-    
+
     # Old report style
     # create_report(reportType, verchks)
 

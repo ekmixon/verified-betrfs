@@ -14,7 +14,7 @@ def main():
     target = sys.argv[1]
     workers = retrieve_running_workers()
     matches = [w for w in workers if target in w["Name"]]
-    if len(matches)==0:
+    if not matches:
         sys.stderr.write("No running worker matches '%s':\n" % target)
         sys.stderr.write(" ".join([w["Name"] for w in workers])+"\n")
         sys.exit(-1)

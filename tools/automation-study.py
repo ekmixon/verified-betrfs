@@ -66,7 +66,7 @@ def lineForIref(iref):
 def symbolNameForOpaqueIref(iref):
     line = lineForIref(iref)
     mo = re.compile("{:opaque}( |{[^}]*})*(\w+)[\(<]").search(line)
-    if mo==None:
+    if mo is None:
         print("XXX no match at ", line)
         return None
     return mo.groups()[1]
@@ -163,7 +163,7 @@ def emit_constants(defs):
 
 def find_dead_lemmas():
     lemmaRE = r'\blemma\b(\s|{[^}]+})+(?P<X>\w+)'
-    lemmas = [re.search(lemmaRE, refToLine[r]).group('X') for r in grepAll(lemmaRE)]
+    lemmas = [re.search(lemmaRE, refToLine[r])['X'] for r in grepAll(lemmaRE)]
     for x in lemmas:
         if len(grepAll(r"\b" + x + r"\b")) <= 1:
             print(x)
@@ -172,7 +172,7 @@ def main():
     #scrape()
 
     records = json.loads(open(INTERMEDIATE).read())
-    print("Got %s records" % len(records))
+    print(f"Got {len(records)} records")
     plot(records)
     defs = gather_constants(records)
     defs = totalDefinitions(defs)

@@ -17,7 +17,7 @@ class Profile:
 
     def parse(self, fn):
         ptrn = re.compile("\[quantifier_instances\] ([^ ]*) : *(\d+) :")
-        for line in open(fn).readlines():
+        for line in open(fn):
             line = line.strip()
             mo = ptrn.search(line)
             if mo != None:

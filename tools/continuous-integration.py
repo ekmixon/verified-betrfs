@@ -12,7 +12,7 @@ import sys
 def callOrDie(*kargs):
     rc = subprocess.call(*kargs)
     if rc!=0:
-        raise Exception("%s call failed" % kargs[0])
+        raise Exception(f"{kargs[0]} call failed")
 
 def main():
     os.chdir("../continuous-integration")

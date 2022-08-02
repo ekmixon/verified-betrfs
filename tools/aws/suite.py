@@ -9,7 +9,7 @@ class Value:
         self.param_value = param_value
 
     def __repr__(self):
-        return "#(%s)" % self.label
+        return f"#({self.label})"
 
 class Variable:
     def __init__(self, label, type, values):
@@ -20,7 +20,7 @@ class Variable:
             value.variable = self
 
     def __repr__(self):
-        return "$(%s)" % self.label
+        return f"$({self.label})"
 
 class Variant:
     def __init__(self, suite, values):
@@ -34,7 +34,7 @@ class Variant:
         for val in self.values:
             val_label_set = self.suite.value_label_set_for_variable_label(val.variable.label)
             if len(val_label_set)>1:
-                parts.append("%s" % val.label)
+                parts.append(f"{val.label}")
         self.label_ = "-".join(parts)
 
     def get_label(self):
@@ -44,7 +44,7 @@ class Variant:
         return self.get_label()
 
     def outfile(self):
-        return "expresults/%s-%s.data" % (self.suite.label, self.get_label())
+        return f"expresults/{self.suite.label}-{self.get_label()}.data"
 
     def vars_of_type(self, type_label):
         return [val.variable for val in self.values if val.variable.type == type_label]
@@ -68,15 +68,21 @@ class BaseSuite:
         self.label = label
 
     def png_filename(self):
-        return "%s.png" % self.label
+        return f"{self.label}.png"
 
     def plot_command(self):
-        return " ".join([
-            "tools/plot/perf-compare.py",
-            "output=%s" % self.png_filename()] + [variant.get_label()+"="+variant.outfile() for variant in self.variants])
+        return " ".join(
+            (
+                ["tools/plot/perf-compare.py", f"output={self.png_filename()}"]
+                + [
+                    f"{variant.get_label()}={variant.outfile()}"
+                    for variant in self.variants
+                ]
+            )
+        )
 
     def logpath(self):
-        return os.path.join("logs", self.label+".log")
+        return os.path.join("logs", f"{self.label}.log")
 
 class Suite(BaseSuite):
     def __init__(self, label, *variables):
@@ -91,20 +97,21 @@ class Suite(BaseSuite):
     def value_label_set_for_variable_label(self, var_label):
         try:
             var = self.variables_by_label[var_label]
-            return set([val.label for val in var.values])
+            return {val.label for val in var.values}
         except KeyError:
             return set()
 
     def make_variants(self, variables):
         if len(variables) == 1:
-            result = [Variant(self, [value]) for value in variables[0].values]
-        else:
-            variants = []
-            for value in variables[0].values:
-                for sub_variant in self.make_variants(variables[1:]):
-                    variants.append(Variant(self, [value] + sub_variant.values))
-            result = variants
-        return result
+            return [Variant(self, [value]) for value in variables[0].values]
+        variants = []
+        for value in variables[0].values:
+            variants.extend(
+                Variant(self, [value] + sub_variant.values)
+                for sub_variant in self.make_variants(variables[1:])
+            )
+
+        return variants
 
 class ConcatSuite(BaseSuite):
     def __init__(self, label, *suites):
@@ -112,8 +119,9 @@ class ConcatSuite(BaseSuite):
         self.suites = suites
         self.variants = []
         for suite in self.suites:
-            for variant in suite.variants:
-                self.variants.append(Variant(self, variant.values))
+            self.variants.extend(
+                Variant(self, variant.values) for variant in suite.variants
+            )
 
     def value_label_set_for_variable_label(self, var_label):
         val_label_set = set()

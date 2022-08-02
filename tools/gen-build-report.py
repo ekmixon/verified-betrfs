@@ -15,9 +15,7 @@ from lib_aggregate import *
 class Traverser:
     def __init__(self, reportType, rootDfy, outputFilename):
         self.reportType = reportType
-        self.output = {}
-        for cond in allConditions:
-            self.output[cond.result] = [];
+        self.output = {cond.result: [] for cond in allConditions}
         self.count = 0
 
         self.visited = set()
@@ -39,7 +37,10 @@ class Traverser:
             self.visit(dep)
 
     def getSummary(self, iref):
-        report = os.path.join(ROOT_PATH, "build", iref.normPath).replace(".dfy", "."+self.reportType)
+        report = os.path.join(ROOT_PATH, "build", iref.normPath).replace(
+            ".dfy", f".{self.reportType}"
+        )
+
         return summarize(self.reportType, report)
 
     def gatherResults(self):
@@ -48,17 +49,16 @@ class Traverser:
             self.output[summary.result].append(iref)
 
     def emit(self, outputFilename):
-        fp = open(outputFilename, "w")
-        hasErrors = False
-        for cond in badConditions:
-            if self.output[cond.result] != []:
-                fp.write(cond.result + ":\n");
-                hasErrors = True
-            for iref in self.output[cond.result]:
-                fp.write("  " + iref.normPath+"\n")
-        if hasErrors == False:
-            fp.write("No errors!\n")
-        fp.close()
+        with open(outputFilename, "w") as fp:
+            hasErrors = False
+            for cond in badConditions:
+                if self.output[cond.result] != []:
+                    fp.write(cond.result + ":\n");
+                    hasErrors = True
+                for iref in self.output[cond.result]:
+                    fp.write(f"  {iref.normPath}" + "\n")
+            if hasErrors == False:
+                fp.write("No errors!\n")
 
 def main():
     try:

@@ -32,16 +32,19 @@ def cgroup_defaults():
   assert ret == 0
 
 def set_mem_limit(limit):
-  if limit.endswith("gb"):
-    val = int(float(limit[:-2]) * 1024*1024*1024)
-    print("setting mem limit to " + str(val) + " bytes (" + limit + ")")
-  else:
-    val = int(limit)
-    print("setting mem limit to " + str(val) + " bytes")
+    if limit.endswith("gb"):
+        val = int(float(limit[:-2]) * 1024*1024*1024)
+        print(f"setting mem limit to {val} bytes ({limit})")
+    else:
+        val = int(limit)
+        print(f"setting mem limit to {val} bytes")
 
-  val = int(val)
-  ret = os.system("echo " + str(val) + " > /sys/fs/cgroup/memory/VeribetrfsExp/memory.limit_in_bytes")
-  assert ret == 0
+    val = val
+    ret = os.system(
+        f"echo {val} > /sys/fs/cgroup/memory/VeribetrfsExp/memory.limit_in_bytes"
+    )
+
+    assert ret == 0
 
 def clear_page_cache():
   os.system("sudo tools/setup-clear-os-page-cache-binary.sh")
@@ -56,29 +59,26 @@ def clear_page_cache():
   assert ret == 0
 
 def splice_value_into_bundle(name, value):
-  splice_successful = False
-  with open("build/Bundle.cpp") as f:
-    lineNum = 0
-    c = 0
-    lines = []
-    for line in f:
-      lineNum += 1
-      if line.strip() == "uint64 __default::" + name + "()":
-        c = 1
-      else:
-        if c == 1:
-          c = 2
-        elif c == 2:
-          line = "    return (uint64)" + value + "; /*hi mom*/\n"
-          splice_successful = True
-          #print("Splicing %s = %s at line %d" % (name, value, lineNum))
-          c = 0
-      lines.append(line)
-    cpp = "".join(lines)
-  assert splice_successful
+    splice_successful = False
+    with open("build/Bundle.cpp") as f:
+        c = 0
+        lines = []
+        for line in f:
+            if line.strip() == f"uint64 __default::{name}()":
+                c = 1
+            elif c == 1:
+                c = 2
+            elif c == 2:
+                line = f"    return (uint64){value}" + "; /*hi mom*/\n"
+                splice_successful = True
+                #print("Splicing %s = %s at line %d" % (name, value, lineNum))
+                c = 0
+            lines.append(line)
+        cpp = "".join(lines)
+    assert splice_successful
 
-  with open("build/Bundle.cpp","w") as f:
-    f.write(cpp)
+    with open("build/Bundle.cpp","w") as f:
+      f.write(cpp)
 
 class Blktrace:
   def __init__(self):
@@ -99,18 +99,18 @@ class Blktrace:
         ["sudo", "blktrace", device], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   
   def stop(self):
-    actuallyprint("Blktrace.stop")
-    self.killall()
-    actuallyprint("Blktrace.wait")
-    self.blktrace_process.wait()
+      actuallyprint("Blktrace.stop")
+      self.killall()
+      actuallyprint("Blktrace.wait")
+      self.blktrace_process.wait()
 
-    actuallyprint("Blktrace.emit")
-    (stdout,stderr) = self.blktrace_process.communicate()
-    lines = (stdout.decode("utf-8") + stderr.decode("utf-8")).split("\n")
-    for line in lines:
-      #fp.write("blktrace "+line+"\n") overwrites all collected data; and besides it's in the log.
-      sys.stdout.write("blktrace "+line+"\n")
-    actuallyprint("Blktrace.done")
+      actuallyprint("Blktrace.emit")
+      (stdout,stderr) = self.blktrace_process.communicate()
+      lines = (stdout.decode("utf-8") + stderr.decode("utf-8")).split("\n")
+      for line in lines:
+              #fp.write("blktrace "+line+"\n") overwrites all collected data; and besides it's in the log.
+          sys.stdout.write(f"blktrace {line}" + "\n")
+      actuallyprint("Blktrace.done")
 
 def main():
   git_branch = None

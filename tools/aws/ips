@@ -12,4 +12,4 @@ for line in ipmapping.split("\n"):
   fields = line.split()
   name = fields[0]
   ip = fields[1]
-  print("%s ssh ubuntu@%s" % (name, ip))
+  print(f"{name} ssh ubuntu@{ip}")

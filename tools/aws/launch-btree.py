@@ -36,18 +36,38 @@ MBTREE_PATH="./tools/run-btree-config-experiment.py"
 
 def cmd_for_idx(idx, worker):
     variant = suite.variants[idx]
-    cmd = (ssh_cmd_for_worker(worker) + [
-        "cd", "veribetrfs", ";",
-        "git", "clean", "-fd", ".", ";",
-        "sh", "tools/clean-for-build.sh", variant.git_branch(), ";",
-        ] + ["python3", MBTREE_PATH] + ["git_branch=" + variant.git_branch()] + [variant.valmap[var].param_value for var in variant.vars_of_type("run_btree")] + ["output=../"+variant.outfile()]
+    cmd = (
+        (
+            ssh_cmd_for_worker(worker)
+            + [
+                "cd",
+                "veribetrfs",
+                ";",
+                "git",
+                "clean",
+                "-fd",
+                ".",
+                ";",
+                "sh",
+                "tools/clean-for-build.sh",
+                variant.git_branch(),
+                ";",
+            ]
+            + ["python3", MBTREE_PATH]
+            + [f"git_branch={variant.git_branch()}"]
         )
+        + [
+            variant.valmap[var].param_value
+            for var in variant.vars_of_type("run_btree")
+        ]
+    ) + [f"output=../{variant.outfile()}"]
+
     return Command(str(variant), cmd)
 
 def main():
     set_logfile(suite.logpath())
     log("PLOT tools/aws/pull-results.py")
-    log("VARIANTS %s" % suite.variants)
+    log(f"VARIANTS {suite.variants}")
 
     workers = retrieve_running_workers(workers_file=args.workers_file, ssd=False)
     blacklist = [

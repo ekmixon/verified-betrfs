@@ -41,9 +41,9 @@ def load_worker_regex_list(filename):
             line = line.partition('#')[0]
             line = line.strip()
             if not line.startswith("^"):
-                line = "^" + line
+                line = f"^{line}"
             if not line.endswith("$"):
-                line = line + "$"
+                line = f"{line}$"
             regexes = regexes + [line]
     return regexes
         
@@ -71,7 +71,7 @@ def ssh_preamble(want_pty=None):
     return ["ssh"]+kill_pty+("-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i").split() + [SSH_ID_PEM]
 
 def ssh_target_for_worker(worker):
-    return"ubuntu@%s" % worker["PublicIpAddress"]
+    return f'ubuntu@{worker["PublicIpAddress"]}'
 
 def ssh_cmd_for_worker(worker, want_pty=None):
     return ssh_preamble(want_pty) + [ssh_target_for_worker(worker)]
@@ -104,13 +104,13 @@ class WorkerMonitor:
         return self.worker["Name"]
 
     def linetag(self):
-        return termcolor.colored("[%s]" % self, spectrum[self.index % len(spectrum)])
+        return termcolor.colored(f"[{self}]", spectrum[self.index % len(spectrum)])
 
     def set_dead(self):
         self.running = False
 
     def launch(self):
-        log("%s LAUNCH_CMD %s" % (self.linetag(), self.cmd.text_cmd_line()))
+        log(f"{self.linetag()} LAUNCH_CMD {self.cmd.text_cmd_line()}")
         self.set_pipe(subprocess.Popen(self.cmd.cmd_ary, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
 
 def running(monitors):
@@ -139,13 +139,11 @@ def poll_monitors(monitors):
                 line = monitor.pipe.stdout.readline()
                 if len(line) == 0: break
                 line = line.decode("utf-8").strip()
-                log("%s %s" % (monitor.linetag(), line))
-        else:
-            # Don't process POLLHUP until there's no POLLIN left to read.
-            if event & select.POLLHUP:
-                if monitor.running:
-                    log("%s WORKER_ENDS" % monitor.linetag())
-                monitor.set_dead()
+                log(f"{monitor.linetag()} {line}")
+        elif event & select.POLLHUP:
+            if monitor.running:
+                log(f"{monitor.linetag()} WORKER_ENDS")
+            monitor.set_dead()
     # If nothing happened, kill a little time before returning to outer loop.
     time.sleep(snooze)
     return running(monitors)
@@ -182,7 +180,7 @@ def launch_worker_pipes(workers, ntasks, lam, dry_run=False):
         worker = workers[idx]
         cmd = lam(idx, worker)
         monitor = WorkerMonitor(worker, cmd)
-        log("%s ASSIGN_CMD %s" % (monitor.linetag(), cmd))
+        log(f"{monitor.linetag()} ASSIGN_CMD {cmd}")
         if not dry_run:
             monitors.append(monitor)
 
@@ -199,26 +197,23 @@ def sequenced_launcher(workers, ntasks, lam, dry_run=False):
         worker = idle_resources.pop()
         cmd = lam(idx, worker)
         monitor = WorkerMonitor(worker, cmd)
-        log("%s ASSIGN_CMD %s" % (monitor.linetag(), cmd))
+        log(f"{monitor.linetag()} ASSIGN_CMD {cmd}")
         if dry_run:
             monitor.set_dead()
         else:
             monitor.launch()
         return monitor
 
-    while len(monitors)>0 or next_task_idx<ntasks:
+    while monitors or next_task_idx < ntasks:
         # assign until we have no more idle resources or work to do
         while len(idle_resources)>0 and next_task_idx<ntasks:
             monitor = dispatch_one(next_task_idx)
             next_task_idx += 1
             monitors.append(monitor)
-        
+
         # wait for something to finish
         prevSize = len(running(monitors))
-        if not dry_run:
-            surviving_monitors = poll_monitors(monitors)
-        else:
-            surviving_monitors = []
+        surviving_monitors = [] if dry_run else poll_monitors(monitors)
         for monitor in monitors:
             if monitor not in surviving_monitors:
                 idle_resources.insert(0, monitor.worker)

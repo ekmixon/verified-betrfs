@@ -39,7 +39,7 @@ class Profile:
     
     def parse(self, fn):
         ptrn = re.compile("\[quantifier_instances\] ([^ ]*) : *(\d+) :")
-        for line in open(fn).readlines():
+        for line in open(fn):
             line = line.strip()
             mo = ptrn.search(line)
             if mo != None:
@@ -70,9 +70,13 @@ class Profiler:
     def run_dafny(self):
         quantifier_pattern = re.compile("\[quantifier_instances\] ([^ ]*) : *(\d+) :")
         prover_error_pattern = re.compile("Prover error:")
-        args = [self.args.dafny, "/timeLimit:" + self.args.timelimit, "/proc:" + str(self.args.proc),
-                #"/proverOpt:O:smt.qi.profile=true", # the presence of this flag now causes qi to return tiny little nonsense numbers. Removing it restores profiler behavior. (jonh)
-                "/proverOpt:O:smt.qi.profile_freq=" + str(self.args.freq)]
+        args = [
+            self.args.dafny,
+            f"/timeLimit:{self.args.timelimit}",
+            f"/proc:{str(self.args.proc)}",
+            f"/proverOpt:O:smt.qi.profile_freq={str(self.args.freq)}",
+        ]
+
         if self.args.arg is not None:
             args.extend(self.args.arg)
         args.append(self.args.filename)
@@ -99,7 +103,7 @@ class Profiler:
         tuples.sort(key=lambda i: (-i[1],i[0]))
 
         if len(tuples) > self.args.show:
-            tuples = tuples[0:self.args.show]
+            tuples = tuples[:self.args.show]
 
         print("%10s %s" % (label, ""))
         for (loc,val) in tuples:

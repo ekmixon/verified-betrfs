@@ -13,7 +13,7 @@ repo_env = os.environ['GITHUB_REPOSITORY']
 repo = gh.get_repo(repo_env)
 commit = repo.get_commit(sha_env)
 
-print("for repository {}, commit {}".format(repo, commit))
+print(f"for repository {repo}, commit {commit}")
 
 with open('build/Impl/Bundle.i.verified', 'r') as verified_file:
     verified_content = verified_file.read()
@@ -25,18 +25,19 @@ try:
     overall = verified_content.splitlines()[0]
     overall_p = re.compile('^Overall: (Success|Fail)$')
     overall_outcome = overall_p.match(overall)[1]
-    if overall_outcome == 'Success':
-        conclusion = 'success'
-        output_title = 'Verified'
-    elif overall_outcome == 'Fail':
+    if overall_outcome == 'Fail':
         conclusion = 'failure'
         output_title = 'Failures'
+    elif overall_outcome == 'Success':
+        conclusion = 'success'
+        output_title = 'Verified'
     else:
         conclusion = 'neutral'
 except Exception:
     pass
 
-wiki_build_path = "https://raw.githubusercontent.com/wiki/vmware-labs/verified-betrfs/verichecks-results/{}".format(sha_env)
+wiki_build_path = f"https://raw.githubusercontent.com/wiki/vmware-labs/verified-betrfs/verichecks-results/{sha_env}"
+
 
 cr_output = {
     'title': output_title,
@@ -50,16 +51,20 @@ cr_output = {
 ```
 
 """.format(
-    wiki_build_path + '/build/Impl/Bundle.i.status.svg',
-    wiki_build_path + '/build/Impl/Bundle.i.status.pdf',
-    wiki_build_path + '/build/Impl/Bundle.i.verified.err',
-    verified_content)
+        f'{wiki_build_path}/build/Impl/Bundle.i.status.svg',
+        f'{wiki_build_path}/build/Impl/Bundle.i.status.pdf',
+        f'{wiki_build_path}/build/Impl/Bundle.i.verified.err',
+        verified_content,
+    ),
 }
 
-repo.create_check_run('status',
-        head_sha=commit.sha,
-        status='completed',
-        external_id='{}-{}-{}'.format(sha_env, repo_env, 'status'),
-        conclusion=conclusion,
-        output=cr_output)
+
+repo.create_check_run(
+    'status',
+    head_sha=commit.sha,
+    status='completed',
+    external_id=f'{sha_env}-{repo_env}-status',
+    conclusion=conclusion,
+    output=cr_output,
+)
 

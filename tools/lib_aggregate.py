@@ -73,13 +73,13 @@ def dafnyFromVerchk(verchk):
     return verchk.replace("build/", "./").replace(".verchk", ".dfy").replace(".synchk", ".dfy")
 
 def verchkFromDafny(dafny, reportType):
-    return "build/" + dafny.replace(".dfy", "."+reportType)
+    return "build/" + dafny.replace(".dfy", f".{reportType}")
 
 def hasDisallowedAssumptions(verchk):
     dfy = dafnyFromVerchk(verchk)
     if dfy.endswith(".s.dfy"):
         return False
-    for line in open(dfy).readlines():
+    for line in open(dfy):
         # TODO: Ignore multiline comments. Requires fancier parsing.
         # TODO: or maybe instead use /noCheating!?
         line = re.sub("//.*$", "", line)    # ignore single-line comments
@@ -89,7 +89,7 @@ def hasDisallowedAssumptions(verchk):
 
 def hasDynamicFrames(verchk):
     dfy = dafnyFromVerchk(verchk)
-    for line in open(dfy).readlines():
+    for line in open(dfy):
         if re.compile("^\s*modifies").search(line):
             return True
         if re.compile("^\s*reads").search(line):
@@ -109,14 +109,14 @@ def extractCondition(reportType, report, content):
                  (re.compile("Dafny program verifier finished with.* (\d+) out of resource"), DafnyRlimitError())]
     for (matcher, err) in err_types:
         match = matcher.search(content)
-        if not match is None and int(match.group(1)) > 0:
+        if match is not None and int(match.group(1)) > 0:
             return err
 
     if hasDisallowedAssumptions(report):
         return DafnyAssumeError()
 
     match = re.compile("Dafny program verifier finished with (?P<verified>\d+) verified").search(content)
-    if not match is None:
+    if match is not None:
         return DafnyVerified()
 
     if reportType==VERCHK:
@@ -125,9 +125,7 @@ def extractCondition(reportType, report, content):
         #  Report assumes even in syntax-only mode.
         if hasDisallowedAssumptions(report):
             return DafnyAssumeError()
-        if hasDynamicFrames(report):
-            return DafnyDynamicFrames()
-        return DafnySyntaxOK()
+        return DafnyDynamicFrames() if hasDynamicFrames(report) else DafnySyntaxOK()
     else:
         raise Exception("build system error: unknown report type %s\n" % reportType)
 
@@ -137,11 +135,7 @@ def summarize_verbose(reportType, verchk):
 
     # Extract time
     mo = re.compile("^([0-9.]+)user", re.MULTILINE).search(content)
-    if mo != None:
-        userTimeSec = float(mo.group(1))
-    else:
-        userTimeSec = None
-
+    userTimeSec = float(mo[1]) if mo != None else None
     condition = extractCondition(reportType, verchk, content)
     condition.userTimeSec = userTimeSec
     condition.filename = dafnyFromVerchk(verchk)

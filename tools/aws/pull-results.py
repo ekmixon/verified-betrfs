@@ -12,7 +12,17 @@ parser = argparse.ArgumentParser(parents=[automation_argparser])
 args = parser.parse_args()
 
 def cmd_for_idx(idx, worker):
-    return Command("pull", ["rsync", "-zrav", "-e", " ".join(ssh_preamble()), ssh_target_for_worker(worker)+":expresults/", "expresults/"])
+    return Command(
+        "pull",
+        [
+            "rsync",
+            "-zrav",
+            "-e",
+            " ".join(ssh_preamble()),
+            f"{ssh_target_for_worker(worker)}:expresults/",
+            "expresults/",
+        ],
+    )
 
 def main():
     workers = retrieve_running_workers(workers_file=args.workers_file, ssd=args.ssd)

@@ -24,7 +24,7 @@ class Observation:
         self.source_filename = source_filename
 
     def __repr__(self):
-        return "%s@%s" % (self.time, self.worker_name)
+        return f"{self.time}@{self.worker_name}"
 
 class SymbolReport:
     def __init__(self, name):
@@ -62,7 +62,7 @@ class SymbolPile:
         return list(self.symbols.values())
 
     def avg_times(self):
-        if self.avg_times_ == None:
+        if self.avg_times_ is None:
             self.avg_times_ = [report.avg() for report in self.reports()]
             self.avg_times_.sort()
         return self.avg_times_ 
@@ -85,7 +85,7 @@ def parse_one(opener, pile):
     worker_name = None
     fn,fp = opener()
     for line in fp.readlines():
-        if not type(line) == type(""):
+        if type(line) != type(""):
             line = line.decode("utf-8")
         if line.startswith("Parsing"):
             source_filename = line.split()[-1]
@@ -136,7 +136,7 @@ def parse_all():
     def parse_all_group(groupname, group_openers):
         pile = SymbolPile()
         if len(group_openers) == 0:
-            raise Exception("No files match %s" % EXPERIMENT)
+            raise Exception(f"No files match {EXPERIMENT}")
         for fn, opener in group_openers:
             # print(groupname, fn)
             parse_one(opener, pile)
@@ -154,12 +154,7 @@ def detect_bogus_workers(pile):
         if report.cv() < 0.3: continue
         worst = max(report.observations, key=lambda obs: obs.time)
         offending_workers[worst.worker_name] += 1
-    bogus_workers=set()
-    for worker,count in offending_workers.items():
-        if count>20:
-            bogus_workers.add(worker)
-        #print("bogus", worker, count)
-    return bogus_workers
+    return {worker for worker, count in offending_workers.items() if count>20}
 
 def reject_bogus_workers(pile, bogus_workers):
     """remove samples taken on bogus AWS worker nodes."""
@@ -182,7 +177,7 @@ class Declaration:
 def parse_dfy_for_reprness(source_filename):
     table = {}
     current_symbol = None
-    for line in open(source_filename).readlines():
+    for line in open(source_filename):
         mo = re.compile("(method|lemma|function|predicate)[^\(]*\s(\S*)\(").search(line)
         if mo!=None:
             decl_type = mo.groups()[0]
@@ -205,8 +200,7 @@ def get_declaration(source_filename, symbol):
             "DynamicPkv.__default.MergeToOneChild",
             "IndirectionTableImpl.IndirectionTable.ComputeRefCounts",
             ):
-        notRepr = Declaration(None, "lemma")    # force a "sure false"
-        return notRepr
+        return Declaration(None, "lemma")
     if symbol in ("KMBtree.__default.SplitChildOfIndex",):
         yesRepr = Declaration(None, "method")    # force a "sure true"
         yesRepr.repr.add("pseudo")
@@ -267,12 +261,15 @@ class CdfPoint:
         all_slow_count = len(repr_set)+len(no_repr_set)
         print("all_slow_count", all_slow_count)
         pct_slow = 100.0*len(repr_set)/all_slow_count
-        self.defs = dict((self.tex_label + k,v) for k,v in {
-            "SlowThresholdSecs": self.thresh_sec,
-            "NumSlowVerifications": all_slow_count,
-            "PctOfSlowVerifsInvolvingHeap": ("%d\\%%" % pct_slow),
-            "FasterPctile": ("%s\\%%" % self.pct_text),
-            }.items())
+        self.defs = {
+            self.tex_label + k: v
+            for k, v in {
+                "SlowThresholdSecs": self.thresh_sec,
+                "NumSlowVerifications": all_slow_count,
+                "PctOfSlowVerifsInvolvingHeap": ("%d\\%%" % pct_slow),
+                "FasterPctile": ("%s\\%%" % self.pct_text),
+            }.items()
+        }
 
 class CDFStuff:
     def __init__(self, pile):
@@ -284,7 +281,7 @@ class CDFStuff:
 
     def defs(self):
         defs = {}
-        defs.update(self.point10s.defs)
+        defs |= self.point10s.defs
         defs.update(self.point20s.defs)
         return defs
 

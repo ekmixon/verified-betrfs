@@ -49,10 +49,9 @@ def count(input, output):
     dafnyFile = line_count_lib.DafnyFile(input, 0.0)
     counter.collect_line_counts([dafnyFile])
     obj = {"spec":dafnyFile.spec, "impl":dafnyFile.impl, "proof":dafnyFile.proof}
-    fp = open(output, "w")
-    json.dump(obj, fp)
-    fp.write("\n")
-    fp.close()
+    with open(output, "w") as fp:
+        json.dump(obj, fp)
+        fp.write("\n")
 
 def main():
     args = parser.parse_args()

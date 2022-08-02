@@ -15,10 +15,8 @@ from lib_aggregate import *
 class Traverser:
     def __init__(self, reportType, rootDfy, outputFilename):
         self.reportType = reportType
-        self.output = []
         self.count = 0
-        self.output.append("digraph {")
-
+        self.output = ["digraph {"]
         self.visited = set()
         root = IncludeReference(None, 0, rootDfy)
         self.visit(root)
@@ -70,7 +68,10 @@ class Traverser:
         self.output.append('}')
 
     def getSummary(self, iref):
-        report = os.path.join(ROOT_PATH, "build", iref.normPath).replace(".dfy", "."+self.reportType)
+        report = os.path.join(ROOT_PATH, "build", iref.normPath).replace(
+            ".dfy", f".{self.reportType}"
+        )
+
         return summarize(self.reportType, report)
 
     def addFillColors(self):
@@ -87,7 +88,7 @@ class Traverser:
         return iref.normPath.rsplit("/", 1)[0]
 
     def createSubgraphs(self):
-        prefixes = set([self.sourceDir(iref) for iref in self.visited])
+        prefixes = {self.sourceDir(iref) for iref in self.visited}
         for prefix in prefixes:
             members = ['"%s"' % iref.normPath for iref in self.visited if self.sourceDir(iref) == prefix]
             dot_safe_prefix = prefix.replace("/", "_").replace("-", "_")
@@ -99,14 +100,13 @@ class Traverser:
             self.output.append("    color=lightblue")
             self.output.append("    fontsize=48")
             for member in members:
-                self.output.append("    %s;" % member);
+                self.output.append(f"    {member};");
             self.output.append("}");
 
     def emit(self, outputFilename):
-        fp = open(outputFilename, "w")
-        for line in self.output:
-            fp.write(line+"\n")
-        fp.close()
+        with open(outputFilename, "w") as fp:
+            for line in self.output:
+                fp.write(line+"\n")
 
 def main():
     try:

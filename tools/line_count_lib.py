@@ -22,7 +22,7 @@ class DafnyFile:
     self.proof = 0
     
   def __repr__(self):
-    return "%s %s secs %s spec %s impl %s proof" % (self.filename, self.verify_time, self.spec, self.impl, self.proof)
+    return f"{self.filename} {self.verify_time} secs {self.spec} spec {self.impl} impl {self.proof} proof"
 
   def is_spec(self):
     return self.filename.endswith(".s.dfy")
@@ -35,30 +35,26 @@ class Counter:
         self.iron_base = iron_base
 
     def run_dafny(self, show_ghost, dafny_filename, tmp_filename):
-      executable = self.iron_base + "/.dafny/dafny/Binaries/dafny"
-      args  = [] 
+      executable = f"{self.iron_base}/.dafny/dafny/Binaries/dafny"
+      args  = []
       args += ["/rprint:-"]
       args += ["/noAutoReq"]
       args += ["/noVerify"]
       args += ["/compile:0"]
       args += ["/nologo"]
       args += ["/env:0"]
-      if show_ghost:
-        args += ["/printMode:NoIncludes"]
-      else:
-        args += ["/printMode:NoGhost"]
+      args += ["/printMode:NoIncludes"] if show_ghost else ["/printMode:NoGhost"]
       args += [dafny_filename]
 
-      tmp_file = open(tmp_filename, "w")
-      #print [executable] + args
-      subprocess.call([executable] + args, shell=False, stdout=tmp_file)
-      tmp_file.close()
+      with open(tmp_filename, "w") as tmp_file:
+        #print [executable] + args
+        subprocess.call([executable] + args, shell=False, stdout=tmp_file)
 
     def run_sloccount(self, tmp_dir):
-      data_dir = tmp_dir + "_data"
+      data_dir = f"{tmp_dir}_data"
       os.makedirs(data_dir)
       executable = "sloccount"
-      args  = [] 
+      args  = []
       args += ["--datadir"]
       args += [data_dir]
       args += ["--details"]
@@ -71,13 +67,12 @@ class Counter:
       output = subprocess.check_output(cmd) #, shell=True)
       output = output.decode("utf-8")
       for line in output.split('\n'):
-        result = re.search("(\d+)\s+cs", line)  # TODO(jonh): hack dfy->cs
-        if result:
-          sloc = result.group(1)
+        if result := re.search("(\d+)\s+cs", line):
+          sloc = result[1]
       if sloc == -1:
         print("pid %d sloc cmd: >> %s <<" % (os.getpid(), " ".join(cmd)))
         print("pid %d sloc output: >>%s<<" % (os.getpid(), output))
-        raise Exception("Failed to find sloccount result! in %s" % tmp_dir)
+        raise Exception(f"Failed to find sloccount result! in {tmp_dir}")
       shutil.rmtree(data_dir)
       return sloc
 
@@ -95,7 +90,7 @@ class Counter:
         os.makedirs(os.path.dirname(inspect_path))
       except FileExistsError:
         pass
-      print("inspect at %s" % inspect_path)
+      print(f"inspect at {inspect_path}")
       open(inspect_path, "w").write(program)
 
     def remove_warnings(self, program):
@@ -107,9 +102,7 @@ class Counter:
           pass
         elif re.search("Warning: .*No terms found", line):
           pass
-        elif re.search("Warning: the type of the other operand", line):
-          pass
-        else:
+        elif not re.search("Warning: the type of the other operand", line):
           clean.append(line)
       return "\n".join(clean)
 
@@ -120,45 +113,28 @@ class Counter:
       output = []
       for i in range(len(regions)):
         region = regions[i]
-        if region=="/*":
-          depth+=1
-        elif region=="*/":
+        if region == "*/":
           depth-=1
-        else:
-          #print("  "*depth, region.replace("\n", "_"))
-          if depth==0:
-            output.append(region)
+        elif region == "/*":
+          depth+=1
+        elif depth==0:
+          output.append(region)
       return "".join(output)
 
     def remove_cruft(self, program):
       # import, export, provides?
       # lines with only braces?
       lines = program.split("\n")
-      clean = []
-      for line in lines:
-        if (re.search("^\s*export ", line)
-            or re.search("^\s*provides ", line)
-            or re.search("^\s*reveals ", line)
-            or re.search("^\s*import ", line)):
-          # Maybe these export controls should get billed, but it's unclear
-          # (from out here in this python script) who to bill them to: some
-          # of the symbols are ghosty, others are methods. So I'm going to
-          # hide them all, so that the ratios of the actual type and
-          # function, method declarations tell the story with less noise.
-          #print("hiding ", line)
-          pass
-        else:
-          clean.append(line)
+      clean = [
+          line for line in lines if not re.search("^\s*export ", line)
+          and not re.search("^\s*provides ", line) and not re.search(
+              "^\s*reveals ", line) and not re.search("^\s*import ", line)
+      ]
       return "\n".join(clean)
 
     def remove_whitespace(self, program):
       lines = program.split("\n")
-      clean = []
-      for line in lines:
-        if re.search("^\s*$", line):
-          pass
-        else:
-          clean.append(line)
+      clean = [line for line in lines if not re.search("^\s*$", line)]
       return "\n".join(clean)
 
     def compute_sloc(self, show_ghost, dafny_file):
@@ -166,7 +142,7 @@ class Counter:
       dafny_dir = os.path.dirname(dafny_file)
       dafny_base = os.path.basename(dafny_file)
       # jonh: name the dafny output .cs to get sloccount to count it.
-      tmp_filename = "%s-%s.cs" % (dafny_base, ("ghost" if show_ghost else "real"))
+      tmp_filename = f'{dafny_base}-{"ghost" if show_ghost else "real"}.cs'
       tmp_file = os.path.join(tmp_dir, tmp_filename)
 
       self.run_dafny(show_ghost, dafny_file, tmp_file)

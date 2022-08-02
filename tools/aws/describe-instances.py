@@ -50,7 +50,10 @@ if __name__=="__main__":
         insts = describeInstances(showAll = args.all, showRunning = args.running, ssd = args.ssd)
         if args.ssh:
             for ist in insts:
-                print("\033[1m{}\033[0m \x1b[34m{}\033[0m\tssh ubuntu@{}".format(ist.Name, ist.State, ist.PublicIpAddress))
+                print(
+                    f"\033[1m{ist.Name}\033[0m \x1b[34m{ist.State}\033[0m\tssh ubuntu@{ist.PublicIpAddress}"
+                )
+
         elif args.json:
             print(json.dumps([
                 {
@@ -61,8 +64,7 @@ if __name__=="__main__":
                 } for inst in insts]))
         else:
             for ist in insts:
-                print("{}\t{}\t{}\t{}".format(
-                    ist.Name, ist.InstanceId, ist.PublicIpAddress, ist.State))
+                print(f"{ist.Name}\t{ist.InstanceId}\t{ist.PublicIpAddress}\t{ist.State}")
     except ClientError as e:
         print(e)
 

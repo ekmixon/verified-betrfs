@@ -9,7 +9,7 @@ import sys
 class ParsedQILog:
     def __init__(self, logfilename):
         self.map = {}
-        for line in open(logfilename).readlines():
+        for line in open(logfilename):
             fields = line.split()
             if len(fields) < 6 or fields[0] != "Prover":
                 continue

@@ -5,7 +5,7 @@
 
 import sys
 import os
-sys.path.append(os.path.dirname(__file__)+"/..")
+sys.path.append(f"{os.path.dirname(__file__)}/..")
 
 import re
 from automation import *
@@ -24,11 +24,7 @@ SUITE_NAME="veri_time_september_02"   # one big parallel build
 N_REPLICAS=5
 
 def listSources():
-    paths = set()
-    for source in depsFromDfySources([ROOT]):
-        # depsFromDfySources seems to produce some duplication; not sure why
-        paths.add(source.normPath)
-
+    paths = {source.normPath for source in depsFromDfySources([ROOT])}
     values = []
     for path in paths:
         clean_path = re.sub("[^A-Za-z0-9-]", "_", path)
@@ -42,8 +38,7 @@ def constructSuite(nReplicas):
         Value("dynamic-frames", "osdi20-artifact-dynamic-frames-vertime"),
         Value("linear", "osdi20-artifact-linear-vertime"),
         ])
-    suite = Suite(SUITE_NAME, sourceVariable, replicaVariable, branchVariable)
-    return suite
+    return Suite(SUITE_NAME, sourceVariable, replicaVariable, branchVariable)
 
 RUN_VERI_PATH="tools/run-veri-config-experiment.py"
 
@@ -51,7 +46,7 @@ def main():
     def cmd_for_idx(idx, worker):
         variant = suite.variants[idx]
         source_path = variant.value_by_name("source").param_value
-        output_path = "../" + variant.outfile()
+        output_path = f"../{variant.outfile()}"
         cmd = (ssh_cmd_for_worker(worker) + [
             "cd", "veribetrfs", ";",
             "sh", "tools/clean-for-build.sh", variant.git_branch(), ";",
@@ -68,9 +63,9 @@ def main():
     #log("VARIANTS %s" % suite.variants)
 
     for variant in suite.variants:
-        log("VARIANT %s" % variant)
-    log("NUM_SOURCES %s" % len(listSources()))
-    log("NUM_VARIANTS %s" % len(suite.variants))
+        log(f"VARIANT {variant}")
+    log(f"NUM_SOURCES {len(listSources())}")
+    log(f"NUM_VARIANTS {len(suite.variants)}")
 
     workers = retrieve_running_workers(workers_file=args.workers_file, ssd=args.ssd)
     sequenced_launcher(workers, len(suite.variants), cmd_for_idx, dry_run=args.dry_run)

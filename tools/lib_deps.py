@@ -32,8 +32,7 @@ def normPathToRoot(path):
     rootAbsPath = os.path.abspath(ROOT_PATH)
     absPath = os.path.abspath(path)
     assert absPath.startswith(rootAbsPath)
-    rootRelPath = absPath[len(rootAbsPath)+1:]
-    return rootRelPath
+    return absPath[len(rootAbsPath)+1:]
 
 
 class IncludeReference:
@@ -60,10 +59,7 @@ class IncludeReference:
         return self.isTrusted() or not self.origin.isTrusted()
 
     def describeOrigin(self):
-        if self.origin is None:
-            return "cmdline"
-        else:
-            return self.origin.normPath
+        return "cmdline" if self.origin is None else self.origin.normPath
 
     def __repr__(self):
         return "%s (via %s:%d)" % (self.normPath, self.describeOrigin(), self.line_num)
@@ -92,9 +88,7 @@ class IncludeReference:
 
     # Python2
     def __cmp__(self, other):
-        if other is None:
-            return False
-        return cmp(self._tuple(), other._tuple())
+        return False if other is None else cmp(self._tuple(), other._tuple())
 
 
 class IncludeNotFound(Exception):
@@ -111,9 +105,7 @@ class IncludeNotFound(Exception):
 def fileFromIncludeLine(line):
     if not line.startswith("//"):
         mo = re.search('^include "(.*)"', line)
-        if mo==None:
-            return mo
-        return mo.groups(1)[0]
+        return mo if mo is None else mo.groups(1)[0]
 
 def includePaths(iref):
     try:
@@ -124,7 +116,7 @@ def includePaths(iref):
     for line_num in range(len(contents)):
         line = contents[line_num]
         includePath = fileFromIncludeLine(line)
-        if includePath == None:
+        if includePath is None:
             continue
         subIref = IncludeReference(iref, line_num+1, includePath)
         irefs.append(subIref)
@@ -156,7 +148,7 @@ def childrenForIref(iref):
 def depsFromDfySource(initialRef):
     needExplore = [initialRef]
     visited = []
-    while len(needExplore)>0:
+    while needExplore:
         iref = needExplore.pop()
         if iref in visited:
             continue
@@ -178,18 +170,14 @@ def depsFromDfySources(roots):
 
 def targetName(iref, suffix):
     targetRootRelPath = iref.normPath.replace(".dfy", suffix)
-    result = "build/%s" % targetRootRelPath
-    return result
+    return f"build/{targetRootRelPath}"
 
 def toposortGroup(candidateIrefs):
     """Given a set of IRefs, returns a list of irefs toposorted based on the include graph."""
-    graph = {}
-    for iRef in candidateIrefs:
-        graph[iRef] = set(includePaths(iRef))
+    graph = {iRef: set(includePaths(iRef)) for iRef in candidateIrefs}
     candidateSet = set(candidateIrefs)
     output = []
     for group in toposort.toposort(graph):
-        group = list(group.intersection(candidateSet))
-        group.sort()
+        group = sorted(group.intersection(candidateSet))
         output += group
     return output

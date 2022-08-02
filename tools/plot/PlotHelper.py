@@ -77,7 +77,7 @@ class StackedTraces:
         self.units = traces[0].units
 
     def __getitem__(self, opn):
-        return sum([tr[opn] for tr in self.traces])
+        return sum(tr[opn] for tr in self.traces)
 
 def plotVsKop(ax, exp, lam, debug=False):
     # ax: which axis to apply the x-label to
@@ -96,18 +96,14 @@ def plotVsKop(ax, exp, lam, debug=False):
                 ys.append(y)
             elif debug:
                 print (x, y)
-        except KeyError:
+        except (KeyError, IndexError):
             if debug: raise
-            else: pass
-        except IndexError:
-            if debug: raise
-            else: pass
     assert None not in xs
     assert None not in ys
     return xs,ys
 
 def windowedPair(ax, num_trace, denom_trace, scale=Unit, window=100*K()):
-    ax.set_ylabel("%s%s/%s" % (scale, num_trace.units, denom_trace.units))
+    ax.set_ylabel(f"{scale}{num_trace.units}/{denom_trace.units}")
     def val(opn):
         opnBefore = opn - window
         #if opnBefore < 0: return None
@@ -120,15 +116,17 @@ def windowedPair(ax, num_trace, denom_trace, scale=Unit, window=100*K()):
             return None
         rate = num/scale()/denom
         return rate
+
     return val
 
 def singleTrace(ax, trace, scale=Unit):
-    ax.set_ylabel("%s%s" % (scale, trace.units))
+    ax.set_ylabel(f"{scale}{trace.units}")
     def lam(opn):
         try:
             return trace[opn]/scale()
         except TypeError:   # None because trace undefined at opn
             return None
+
     return lam
 
 def set_xlim(ax, experiments):
@@ -155,13 +153,14 @@ def plotThroughput(ax, experiments):
         #print(exp, len(exp.operation), len(exp.elapsed))
         #print(plotVsKop(ax, exp, windowedPair(ax, exp.operation, exp.elapsed, scale=K)))
         line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, exp.operation, exp.elapsed, scale=K)), color=spectrum(expi))
-        line.set_label(exp.nickname + " tput")
+        line.set_label(f"{exp.nickname} tput")
         ax.plot(*plotVsKop(ax, exp, windowedPair(ax, exp.operation, exp.elapsed, window=1000*K(), scale=K)), color=spectrum(expi), linestyle="dotted")
 
         def elapsedTime(opn):
             return exp.elapsed[opn]
+
         line, = a2.plot(*plotVsKop(ax, exp, elapsedTime), color=spectrum(expi))
-        line.set_label(exp.nickname + " rate")
+        line.set_label(f"{exp.nickname} rate")
     ax.legend(loc="upper left")
     ax.set_yscale("log")
     ax.set_ylim(bottom=0.1)
@@ -169,7 +168,7 @@ def plotThroughput(ax, experiments):
     ax.grid(which="minor", color="#dddddd")
     set_xlim(ax, experiments)
     a2.legend(loc="lower left")
-    
+
     for exp in experiments[:1]:
         for phase,opn in exp.phase_starts.items():
             #print (phase,opn,opn/K())
@@ -260,14 +259,14 @@ def plotRocksIo(ax, experiments):
     def plotOneExp(exp, plotkwargs):
         hit_ratio = LambdaTrace(lambda opn: exp.rocks_io_hits[opn]/exp.rocks_io_reads[opn], "frac")
         line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, exp.rocks_io_hits, exp.rocks_io_reads, window=window)), **plotkwargs)
-        line.set_label(exp.nickname + " rio_ratio")
+        line.set_label(f"{exp.nickname} rio_ratio")
         line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, exp.rocks_io_hits, exp.rocks_io_reads, window=100*window)), linestyle="dotted", **plotkwargs)
     #        line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, exp.rocks_io_reads, exp.operation, window=window)))
     #        line.set_label("rio_access")
 
         miss_pages = LambdaTrace(lambda opn: (exp.rocks_io_reads[opn] - exp.rocks_io_hits[opn]), "pages")
         line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, miss_pages, exp.operation, scale=Unit, window=100*K())), **plotkwargs)
-        line.set_label(exp.nickname + " miss_per_opn (%s)" % miss_pages.units)
+        line.set_label(exp.nickname + f" miss_per_opn ({miss_pages.units})")
         line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, miss_pages, exp.operation, scale=Unit, window=1000*K())), linestyle="dotted", **plotkwargs)
 
     plotMany(ax, experiments, plotOneExp)
@@ -283,9 +282,9 @@ def plotCpuTime(ax, experiments):
 
         #print("ticksPerSecond", ticksPerSecond)
         line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, user_sec, exp.elapsed)), **plotkwargs)
-        line.set_label(exp.nickname+" user")
+        line.set_label(f"{exp.nickname} user")
         line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, sys_sec, exp.elapsed)), **plotkwargs, linestyle="dotted")
-        line.set_label(exp.nickname+" sys")
+        line.set_label(f"{exp.nickname} sys")
 
     plotMany(ax, experiments, plotOneExp)
 
@@ -295,9 +294,9 @@ def plotProcIoBytes(ax, experiments):
     def plotOneExp(exp, plotkwargs):
         window = 1000*K()
         line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, exp.procio_read_bytes, exp.operation, scale=Ki, window=window)), **plotkwargs)
-        line.set_label(exp.nickname + " read")
+        line.set_label(f"{exp.nickname} read")
         line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, exp.procio_write_bytes, exp.operation, scale=Ki, window=window)), linestyle="dotted", **plotkwargs)
-        line.set_label(exp.nickname + " write")
+        line.set_label(f"{exp.nickname} write")
 
     plotMany(ax, experiments, plotOneExp)
     ax.grid(which="major", color="#dddddd")
@@ -313,7 +312,7 @@ def plotIoLatencyCdf(ax, experiments):
                 (exp.iolatency_read, "read", "-"),
                 (exp.iolatency_write, "write", "dotted")):
             cdf = cdf_src[opn]
-            if cdf==None: continue
+            if cdf is None: continue
             line, = ax.plot([cycles/assumeProcCyclesPerSec*K() for cycles in cdf.xs], cdf.ys, linestyle=linestyle, **plotkwargs)
             line.set_label("%s %s @%dKop" % (exp.nickname, label, opn/K()))
 
@@ -334,20 +333,20 @@ def plotSlowIos(ax, experiments):
         try: threshTraces.add(exp.slow_thresh)
         except IndexError: pass
     try:
-        threshValues = set([t[t.sortedKeys()[0]] for t in threshTraces if not t.empty()])
+        threshValues = {t[t.sortedKeys()[0]] for t in threshTraces if not t.empty()}
         descr = str(list(threshValues)[0]) if len(threshValues)==1 else str(threshValues)
-        ax.set_title("slow ios (thresh %s %s)" % (
-            descr, list(threshTraces)[0].units))
+        ax.set_title(f"slow ios (thresh {descr} {list(threshTraces)[0].units})")
     except: raise
     window = 10*K()
     def plotOneExp(exp, plotkwargs):
         line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, exp.slow_reads, exp.operation, window=window)), **plotkwargs)
         print(exp.nickname, len(exp.slow_reads.data))
         if not exp.slow_reads.empty():
-            line.set_label(exp.nickname + " reads")
+            line.set_label(f"{exp.nickname} reads")
         line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, exp.slow_writes, exp.operation, window=window)), linestyle="dotted", **plotkwargs)
         if not exp.slow_writes.empty():
-            line.set_label(exp.nickname + " writes")
+            line.set_label(f"{exp.nickname} writes")
+
     plotManyForeach(ax, experiments, plotOneExp)
     ax.legend()
     ax.grid(which="major", color="#dddddd")
@@ -358,7 +357,8 @@ def plotCacheStats(ax, experiments):
     ax.set_title("cache stats")
     def plotOneExp(exp, plotkwargs):
         line, = ax.plot(*plotVsKop(ax, exp, windowedPair(ax, exp.writeback_stalls, exp.operation, window=10*K())), **plotkwargs)
-        line.set_label(exp.nickname + " stalls")
+        line.set_label(f"{exp.nickname} stalls")
+
     plotManyForeach(ax, experiments, plotOneExp)
     ax.legend()
     ax.grid(which="major", color="#dddddd")

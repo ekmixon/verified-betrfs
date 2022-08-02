@@ -24,29 +24,23 @@ for line in file:
     if ":opaque" in line:
         continue
 
-    match = re.match(re_datatype, line)
-
-    if match:
-        exports.add(match.group(2))
-        # print(match.group(1))
-        continue
-    
-    match = re.match(re_type, line)
-    if match:
-        exports.add(match.group(1))
+    if match := re.match(re_datatype, line):
+        exports.add(match[2])
         # print(match.group(1))
         continue
 
-    match = re.match(re_function, line)
+    if match := re.match(re_type, line):
+        exports.add(match[1])
+        # print(match.group(1))
+        continue
 
-    if match:
-        exports.add(match.group(3))
+    if match := re.match(re_function, line):
+        exports.add(match[3])
         # print(match.group(3))
         continue
 
-    match = re.match(re_predicate, line)
-    if match:
-        exports.add(match.group(3))
+    if match := re.match(re_predicate, line):
+        exports.add(match[3])
         continue
 
     # match = re.match(re_lemma, line)
